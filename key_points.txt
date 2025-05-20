@@ -1,5 +1,0 @@
-
-1. 
-
-kudu log stream:
-https://ntt-cad-is-i1-d-cardamagev1.scm.azurewebsites.net/api/logstream
