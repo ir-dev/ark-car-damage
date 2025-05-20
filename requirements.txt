@@ -1,3 +1,4 @@
+azure-functions
 flask
 ultralytics
 pillow
