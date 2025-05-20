@@ -1,5 +1,5 @@
 azure-functions
-flask
+Flask
 ultralytics
 pillow
 torch
