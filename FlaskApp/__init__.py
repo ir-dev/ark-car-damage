@@ -1,7 +1,7 @@
 from flask import Flask
 
 # Always use relative import for custom module
-from .package.module import MODULE_VALUE
+#from .package.module import MODULE_VALUE
 
 app = Flask(__name__)
 
