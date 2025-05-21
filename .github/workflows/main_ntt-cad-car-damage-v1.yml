@@ -28,3 +28,4 @@ jobs:
           app-name: ntt-cad-car-damage-v1
           package: .
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4255937AC76849E988F83550F2E5FB7F }}
+          sku: 'flexconsumption'
