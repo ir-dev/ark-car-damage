@@ -31,4 +31,5 @@ jobs:
         with:
           app-name: YOUR_FUNCTION_APP_NAME     # e.g., myfuncapp
           package: functionapp.zip
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4255937AC76849E988F83550F2E5FB7F }}
+          sku: 'flexconsumption'
