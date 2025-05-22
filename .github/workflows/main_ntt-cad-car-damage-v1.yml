@@ -27,7 +27,8 @@ jobs:
         run: |
           mkdir -p build
           cp -r .python_packages build/
-          cp -r MyFunction build/
+          cp -r FlaskApp build/
+          cp -r HandleApproach build/
           cp host.json build/
           cp requirements.txt build/
           cd build
