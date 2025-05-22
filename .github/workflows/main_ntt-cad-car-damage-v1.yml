@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'  # or whatever version you're using
+          python-version: '3.12'  # or whatever version you're using
 
       - name: Install dependencies into local folder
         run: |
@@ -27,17 +27,18 @@ jobs:
         run: |
           mkdir -p build
           cp -r .python_packages build/
-          cp -r FlaskApp build/
+          cp -r CarApp build/
           cp -r HandleApproach build/
           cp host.json build/
           cp requirements.txt build/
+          cp cat-damage-v2.pt build/
           cd build
           zip -r ../functionapp.zip .
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: myfunc-app1
+          name: myfunc-app2
           path: |
             functionapp.zip
 

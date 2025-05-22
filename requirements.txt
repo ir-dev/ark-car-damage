@@ -4,3 +4,6 @@
 
 azure-functions
 flask
+ultralytics
+pillow
+torch
