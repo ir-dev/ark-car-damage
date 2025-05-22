@@ -18,34 +18,10 @@ jobs:
         with:
           python-version: '3.12'  # or whatever version you're using
 
-      - name: Install dependencies into local folder
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt --target=".python_packages/lib/site-packages"
-
-      - name: Prepare zip package
-        run: |
-          mkdir -p build
-          cp -r .python_packages build/
-          cp -r CarApp build/
-          cp -r HandleApproach build/
-          cp host.json build/
-          cp requirements.txt build/
-          cp cat-damage-v2.pt build/
-          cd build
-          zip -r ../functionapp.zip .
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      - name: 'Run Azure webapp deploy action using publish profile credentials'
+        uses: azure/webapps-deploy@v3
         with:
-          name: myfunc-app2
-          path: |
-            functionapp.zip
-
-      - name: Deploy to Azure Function App
-        uses: Azure/functions-action@v1
-        with:
-          app-name: ntt-cad-car-damage-v1
+          app-name: ntt-car-cd-i1-d
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_4255937AC76849E988F83550F2E5FB7F }}
+          publish-profile: ${{ secrets.AZURE_APPSERVICE_PUBLISH_PROFILE_CD }}
           sku: 'flexconsumption'
