@@ -298,6 +298,23 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
+        .annotation {
+            position: absolute;
+            background-color: rgba(255, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            clip-path: polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%);
+            cursor: move;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+
+            .annotation.highlighted {
+                background-color: rgba(255, 0, 0, 0.4);
+                box-shadow: 0 0 0 2px rgba(255,0,0,0.8);
+            }
+
         @@media (max-width: 768px) {
             .upload-section {
                 flex-direction: column;
@@ -731,29 +748,53 @@
                 e.preventDefault();
                 e.stopPropagation();
 
-                isDraggingAnnotation = true;
-                currentDragAnnotation = this;
-                currentDragLabel = this.labelElement;
-
+                // Fix for bug #1 - proper offset calculation
                 const rect = this.getBoundingClientRect();
+                const canvasRect = annotationCanvas.getBoundingClientRect();
+
                 if (e.type === 'mousedown') {
-                    dragStartX = e.clientX;
-                    dragStartY = e.clientY;
                     dragOffsetX = e.clientX - rect.left;
                     dragOffsetY = e.clientY - rect.top;
+                    dragStartX = e.clientX - canvasRect.left;
+                    dragStartY = e.clientY - canvasRect.top;
                 } else if (e.touches) {
-                    dragStartX = e.touches[0].clientX;
-                    dragStartY = e.touches[0].clientY;
                     dragOffsetX = e.touches[0].clientX - rect.left;
                     dragOffsetY = e.touches[0].clientY - rect.top;
+                    dragStartX = e.touches[0].clientX - canvasRect.left;
+                    dragStartY = e.touches[0].clientY - canvasRect.top;
                 }
 
-                document.addEventListener('mousemove', dragAnnotation);
-                document.addEventListener('touchmove', dragAnnotation, { passive: false });
-                document.addEventListener('mouseup', endAnnotationDrag);
-                document.addEventListener('touchend', endAnnotationDrag);
+                // Fix for bug #2 - prevent spot selection during drag
+                const clickX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clickY = e.clientY || (e.touches && e.touches[0].clientY);
+                const moveThreshold = 5; // pixels to consider it a drag
+
+                const checkForDrag = (moveEvent) => {
+                    const moveX = moveEvent.clientX || (moveEvent.touches && moveEvent.touches[0].clientX);
+                    const moveY = moveEvent.clientY || (moveEvent.touches && moveEvent.touches[0].clientY);
+
+                    if (Math.abs(moveX - clickX) > moveThreshold ||
+                        Math.abs(moveY - clickY) > moveThreshold) {
+                        // It's a drag - proceed
+                        isDraggingAnnotation = true;
+                        currentDragAnnotation = this;
+                        currentDragLabel = this.labelElement;
+
+                        document.addEventListener('mousemove', dragAnnotation);
+                        document.addEventListener('touchmove', dragAnnotation, { passive: false });
+                        document.addEventListener('mouseup', endAnnotationDrag);
+                        document.addEventListener('touchend', endAnnotationDrag);
+
+                        document.removeEventListener('mousemove', checkForDrag);
+                        document.removeEventListener('touchmove', checkForDrag);
+                    }
+                };
+
+                document.addEventListener('mousemove', checkForDrag);
+                document.addEventListener('touchmove', checkForDrag, { passive: false });
             }
 
+            // Modified dragAnnotation function for better positioning
             function dragAnnotation(e) {
                 if (!isDraggingAnnotation) return;
                 e.preventDefault();
@@ -762,17 +803,22 @@
                 const clientY = e.clientY || (e.touches && e.touches[0].clientY);
 
                 if (clientX && clientY) {
-                    const newX = clientX - dragOffsetX;
-                    const newY = clientY - dragOffsetY;
+                    const canvasRect = annotationCanvas.getBoundingClientRect();
+                    const newX = clientX - canvasRect.left - dragOffsetX;
+                    const newY = clientY - canvasRect.top - dragOffsetY;
+
+                    // Constrain to canvas boundaries
+                    const constrainedX = Math.max(0, Math.min(newX, canvasRect.width - currentDragAnnotation.offsetWidth));
+                    const constrainedY = Math.max(0, Math.min(newY, canvasRect.height - currentDragAnnotation.offsetHeight));
 
                     // Update annotation position
-                    currentDragAnnotation.style.left = `${newX}px`;
-                    currentDragAnnotation.style.top = `${newY}px`;
+                    currentDragAnnotation.style.left = `${constrainedX}px`;
+                    currentDragAnnotation.style.top = `${constrainedY}px`;
 
                     // Update label position if exists
                     if (currentDragLabel) {
-                        const labelX = newX + (parseFloat(currentDragLabel.dataset.offsetX) || 0);
-                        const labelY = newY + (parseFloat(currentDragLabel.dataset.offsetY) || 0);
+                        const labelX = constrainedX + (parseFloat(currentDragLabel.dataset.offsetX) || 0);
+                        const labelY = constrainedY + (parseFloat(currentDragLabel.dataset.offsetY) || 0);
                         currentDragLabel.style.left = `${labelX}px`;
                         currentDragLabel.style.top = `${labelY}px`;
                     }
@@ -980,6 +1026,32 @@
                 canStartNewPolygon = true;
                 if (isMobile) mobileControls.style.display = 'none';
             }
+
+            // New function for highlighting annotations
+            function setupAnnotationHighlighting() {
+                annotationsList.addEventListener('mouseover', function (e) {
+                    const item = e.target.closest('.annotation-item');
+                    if (!item) return;
+
+                    const index = Array.from(annotationsList.children).indexOf(item);
+                    if (index >= 0 && annotations[index]) {
+                        annotations[index].element.classList.add('highlighted');
+                    }
+                });
+
+                annotationsList.addEventListener('mouseout', function (e) {
+                    const item = e.target.closest('.annotation-item');
+                    if (!item) return;
+
+                    const index = Array.from(annotationsList.children).indexOf(item);
+                    if (index >= 0 && annotations[index]) {
+                        annotations[index].element.classList.remove('highlighted');
+                    }
+                });
+            }
+
+            // Call this after DOM is ready
+            setupAnnotationHighlighting();
         });
     </script>
 </body>
