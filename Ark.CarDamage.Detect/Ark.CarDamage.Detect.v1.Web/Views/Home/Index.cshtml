@@ -1,0 +1,906 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Comparison & Annotation Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .upload-box {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .upload-box.active {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        .comparison-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .comparison-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .before-image, .after-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .before-image {
+            z-index: 1;
+        }
+        .after-image {
+            z-index: 2;
+            clip-path: polygon(0 0, 50% 0, 50% 100%, 0% 100%);
+        }
+        .slider {
+            position: absolute;
+            z-index: 3;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: white;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: ew-resize;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        .slider::before {
+            content: "↔";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .annotation-tools {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            display: none;
+        }
+        .annotation-canvas {
+            position: relative;
+            width: 100%;
+            border: 1px solid #ddd;
+            margin-top: 10px;
+        }
+        .annotation-form {
+            position: absolute;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            z-index: 10;
+            display: none;
+        }
+        input, button, select {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .annotation {
+            position: absolute;
+            background-color: rgba(255, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            clip-path: polygon(0% 0%, 0% 100%, 100% 100%, 100% 0%);
+        }
+        .annotation-header {
+            display: flex;
+            justify-content: flex-end;
+            padding: 2px;
+        }
+        .delete-annotation {
+            background: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+        }
+        .delete-annotation:hover {
+            background: rgba(0,0,0,0.8);
+        }
+        .annotation-label {
+            background: white;
+            padding: 2px 5px;
+            font-size: 12px;
+            border-radius: 3px;
+            margin: 5px;
+            align-self: center;
+        }
+
+        .annotation-label {
+            position: absolute;
+            background: white;
+            padding: 2px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            white-space: nowrap;
+            z-index: 6;
+            transform: translateY(-50%);
+        }
+        .saved-annotations {
+            margin-top: 20px;
+        }
+        .annotation-item {
+            background: #e9e9e9;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .delete-saved-annotation {
+            background: #ff4444;
+            color: white;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 0;
+        }
+        .delete-saved-annotation:hover {
+            background: #cc0000;
+        }
+        .label-options {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+            flex-wrap: wrap;
+        }
+        .label-option {
+            padding: 3px 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .label-option:hover {
+            background: #d0d0d0;
+        }
+        .polygon-point {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border: 2px solid red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+        .polygon-line {
+            position: absolute;
+            background: red;
+            height: 2px;
+            transform-origin: 0 0;
+            z-index: 4;
+        }
+        @@media (max-width: 768px) {
+            .upload-section {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Comparison & Annotation Tool</h1>
+
+        <div class="upload-section">
+            <div class="upload-box" id="before-upload">
+                <h3>Upload Before Image</h3>
+                <input type="file" id="before-input" accept="image/*">
+                <p>or drag and drop image here</p>
+            </div>
+
+            <div class="upload-box" id="after-upload">
+                <h3>Upload After Image</h3>
+                <input type="file" id="after-input" accept="image/*">
+                <p>or drag and drop image here</p>
+            </div>
+        </div>
+
+        <div class="comparison-container" id="comparison-container" style="display: none;">
+            <div class="slider" id="slider"></div>
+            <img class="comparison-image" id="before-image" src="" alt="Before">
+            <img class="comparison-image after-image" id="after-image" src="" alt="After">
+        </div>
+
+        <div class="annotation-tools" id="annotation-tools">
+            <h3>Annotation Tools</h3>
+            <p>Click to add points to create a polygon. Click near the first point to complete.</p>
+            <p>Press ESC to cancel current polygon. Click again to start a new one after completing.</p>
+
+            <div class="annotation-canvas" id="annotation-canvas">
+                <img id="annotation-image" src="" alt="Image for Annotation" style="width: 100%;">
+                <div class="annotation-form" id="annotation-form">
+                    <div class="label-options" id="label-options">
+                        <div class="label-option" data-label="Defect">Defect</div>
+                        <div class="label-option" data-label="Damage">Damage</div>
+                        <div class="label-option" data-label="Improvement">Improvement</div>
+                        <div class="label-option" data-label="Custom">Custom</div>
+                    </div>
+                    <input type="text" id="annotation-text" placeholder="Enter label" style="display: none; margin-top: 5px;">
+                    <select id="annotation-color" style="margin-top: 5px;">
+                        <option value="red">Red</option>
+                        <option value="blue">Blue</option>
+                        <option value="green">Green</option>
+                        <option value="yellow">Yellow</option>
+                    </select>
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button id="confirm-annotation">Save</button>
+                        <button id="cancel-annotation">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="saved-annotations" id="saved-annotations" style="display: none;">
+            <h3>Saved Annotations</h3>
+            <div id="annotations-list"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM Elements
+            const beforeUpload = document.getElementById('before-upload');
+            const afterUpload = document.getElementById('after-upload');
+            const beforeInput = document.getElementById('before-input');
+            const afterInput = document.getElementById('after-input');
+            const comparisonContainer = document.getElementById('comparison-container');
+            const beforeImage = document.getElementById('before-image');
+            const afterImage = document.getElementById('after-image');
+            const slider = document.getElementById('slider');
+            const annotationTools = document.getElementById('annotation-tools');
+            const annotationCanvas = document.getElementById('annotation-canvas');
+            const annotationImage = document.getElementById('annotation-image');
+            const annotationForm = document.getElementById('annotation-form');
+            const labelOptions = document.getElementById('label-options');
+            const annotationText = document.getElementById('annotation-text');
+            const annotationColor = document.getElementById('annotation-color');
+            const confirmAnnotationBtn = document.getElementById('confirm-annotation');
+            const cancelAnnotationBtn = document.getElementById('cancel-annotation');
+            const savedAnnotations = document.getElementById('saved-annotations');
+            const annotationsList = document.getElementById('annotations-list');
+
+            // State variables
+            let isDragging = false;
+            let startX = 0;
+            let currentAnnotation = null;
+            let annotations = [];
+            let isDrawingPolygon = false;
+            let polygonPoints = [];
+            let polygonLines = [];
+            let polygonElements = [];
+            let firstPoint = null;
+            let closeThreshold = 15; // pixels to consider closing the polygon
+            let canStartNewPolygon = true;
+
+            // Setup drag and drop for upload boxes
+            setupUploadBox(beforeUpload, beforeInput);
+            setupUploadBox(afterUpload, afterInput);
+
+            // File input change handlers
+            beforeInput.addEventListener('change', function (e) {
+                handleImageUpload(e, beforeImage, 'before');
+            });
+
+            afterInput.addEventListener('change', function (e) {
+                handleImageUpload(e, afterImage, 'after');
+            });
+
+            // Slider interaction
+            slider.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+
+            // Annotation tools
+            annotationCanvas.addEventListener('click', handleCanvasClick);
+            document.addEventListener('keydown', handleKeyDown);
+
+            // Label options
+            labelOptions.querySelectorAll('.label-option').forEach(option => {
+                option.addEventListener('click', function () {
+                    const label = this.getAttribute('data-label');
+                    if (label === 'Custom') {
+                        annotationText.style.display = 'block';
+                        annotationText.focus();
+                    } else {
+                        annotationText.style.display = 'none';
+                        annotationText.value = label;
+                    }
+                });
+            });
+
+            confirmAnnotationBtn.addEventListener('click', saveAnnotation);
+            cancelAnnotationBtn.addEventListener('click', cancelAnnotation);
+
+            // Functions
+            function setupUploadBox(box, input) {
+                box.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    box.classList.add('active');
+                });
+
+                box.addEventListener('dragleave', function () {
+                    box.classList.remove('active');
+                });
+
+                box.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    box.classList.remove('active');
+                    if (e.dataTransfer.files.length) {
+                        input.files = e.dataTransfer.files;
+                        const event = new Event('change');
+                        input.dispatchEvent(event);
+                    }
+                });
+            }
+
+            function handleImageUpload(event, imageElement, type) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        imageElement.src = e.target.result;
+
+                        if (type === 'after') {
+                            annotationImage.src = e.target.result;
+                        }
+
+                        // Show comparison container when both images are loaded
+                        if (beforeImage.src && afterImage.src) {
+                            comparisonContainer.style.display = 'block';
+                            annotationTools.style.display = 'block';
+
+                            // Set the same height for both images
+                            const height = beforeImage.offsetHeight;
+                            afterImage.style.height = `${height}px`;
+                            annotationImage.style.height = `${height}px`;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            function startDrag(e) {
+                isDragging = true;
+                startX = e.clientX;
+                document.body.style.cursor = 'ew-resize';
+                e.preventDefault();
+            }
+
+            function drag(e) {
+                if (!isDragging) return;
+
+                const containerWidth = comparisonContainer.offsetWidth;
+                const newPosition = e.clientX - comparisonContainer.getBoundingClientRect().left;
+                let percentage = (newPosition / containerWidth) * 100;
+
+                // Limit between 0 and 100
+                percentage = Math.max(0, Math.min(100, percentage));
+
+                afterImage.style.clipPath = `polygon(0 0, ${percentage}% 0, ${percentage}% 100%, 0% 100%)`;
+                slider.style.left = `${percentage}%`;
+            }
+
+            function endDrag() {
+                isDragging = false;
+                document.body.style.cursor = '';
+            }
+
+            function handleCanvasClick(e) {
+                // Check if click was on the annotation form
+                if (e.target.closest('.annotation-form')) {
+                    return;
+                }
+
+                if (!canStartNewPolygon && !isDrawingPolygon) return;
+
+                const rect = annotationCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                if (!isDrawingPolygon) {
+                    startPolygon(x, y);
+                    canStartNewPolygon = false;
+                } else {
+                    if (polygonPoints.length > 2 &&
+                        Math.abs(x - firstPoint.x) < closeThreshold &&
+                        Math.abs(y - firstPoint.y) < closeThreshold) {
+                        completePolygon();
+                        canStartNewPolygon = true;
+                    } else {
+                        addPolygonPoint(x, y);
+                    }
+                }
+            }
+
+            function handleKeyDown(e) {
+                if (e.key === 'Escape') {
+                    if (isDrawingPolygon) {
+                        cancelPolygon();
+                        canStartNewPolygon = true;
+                    } else if (annotationForm.style.display === 'block') {
+                        cancelAnnotation();
+                        canStartNewPolygon = true;
+                    }
+                }
+            }
+
+            function startPolygon(x, y) {
+                isDrawingPolygon = true;
+                polygonPoints = [{ x, y }];
+                firstPoint = { x, y };
+
+                // Create first point visual
+                const point = createPolygonPoint(x, y);
+                polygonElements.push(point);
+                annotationCanvas.appendChild(point);
+            }
+
+            function addPolygonPoint(x, y) {
+                polygonPoints.push({ x, y });
+
+                // Create point visual
+                const point = createPolygonPoint(x, y);
+                polygonElements.push(point);
+                annotationCanvas.appendChild(point);
+
+                // Create line from previous point
+                if (polygonPoints.length > 1) {
+                    const prevPoint = polygonPoints[polygonPoints.length - 2];
+                    const line = createPolygonLine(prevPoint.x, prevPoint.y, x, y);
+                    polygonLines.push(line);
+                    polygonElements.push(line);
+                    annotationCanvas.appendChild(line);
+                }
+            }
+
+            function completePolygon() {
+                isDrawingPolygon = false;
+
+                // Create the final line closing the polygon
+                const line = createPolygonLine(
+                    polygonPoints[polygonPoints.length - 1].x,
+                    polygonPoints[polygonPoints.length - 1].y,
+                    firstPoint.x,
+                    firstPoint.y
+                );
+                polygonLines.push(line);
+                polygonElements.push(line);
+                annotationCanvas.appendChild(line);
+
+                // Create the annotation div with polygon clip path
+                createAnnotationFromPolygon();
+
+                // Clean up the temporary points and lines
+                clearPolygonElements();
+            }
+
+            function cancelPolygon() {
+                isDrawingPolygon = false;
+                clearPolygonElements();
+                polygonPoints = [];
+                firstPoint = null;
+            }
+
+            function createPolygonPoint(x, y) {
+                const point = document.createElement('div');
+                point.className = 'polygon-point';
+                point.style.left = `${x}px`;
+                point.style.top = `${y}px`;
+                return point;
+            }
+
+            function createPolygonLine(x1, y1, x2, y2) {
+                const line = document.createElement('div');
+                line.className = 'polygon-line';
+
+                const length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+                const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+                line.style.width = `${length}px`;
+                line.style.left = `${x1}px`;
+                line.style.top = `${y1}px`;
+                line.style.transform = `rotate(${angle}deg)`;
+
+                return line;
+            }
+
+            function createAnnotationFromPolygon() {
+                currentAnnotation = document.createElement('div');
+                currentAnnotation.className = 'annotation';
+
+                // Convert points to clip-path polygon format
+                const polygonPath = polygonPoints.map(p => {
+                    return `${(p.x / annotationCanvas.offsetWidth * 100).toFixed(2)}% ${(p.y / annotationCanvas.offsetHeight * 100).toFixed(2)}%`;
+                }).join(', ');
+
+                currentAnnotation.style.clipPath = `polygon(${polygonPath})`;
+                currentAnnotation.style.border = 'none';
+                currentAnnotation.style.left = '0';
+                currentAnnotation.style.top = '0';
+                currentAnnotation.style.width = '100%';
+                currentAnnotation.style.height = '100%';
+
+                annotationCanvas.appendChild(currentAnnotation);
+
+                // Position the form near the first point
+                const rect = annotationCanvas.getBoundingClientRect();
+                formPosition = {
+                    x: firstPoint.x,
+                    y: firstPoint.y
+                };
+
+                // Adjust position to keep form within canvas
+                const formWidth = 200;
+                const formHeight = 150;
+
+                if (formPosition.x + formWidth > rect.width) {
+                    formPosition.x = rect.width - formWidth - 10;
+                }
+                if (formPosition.y + formHeight > rect.height) {
+                    formPosition.y = rect.height - formHeight - 10;
+                }
+
+                annotationForm.style.left = `${formPosition.x}px`;
+                annotationForm.style.top = `${formPosition.y}px`;
+                annotationForm.style.display = 'block';
+
+                // Reset form
+                annotationText.style.display = 'none';
+                annotationText.value = '';
+
+                // Focus on the first input when form appears
+                setTimeout(() => {
+                    annotationColor.focus();
+                }, 10);
+            }
+
+            function clearPolygonElements() {
+                polygonElements.forEach(el => {
+                    if (el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+                polygonElements = [];
+                polygonLines = [];
+            }
+
+            function saveAnnotation() {
+                if (!currentAnnotation || (!annotationText.value && annotationText.style.display === 'block')) {
+                    alert('Please enter a label for the annotation');
+                    return;
+                }
+
+                const label = annotationText.value || labelOptions.querySelector('.label-option[data-label]:not([data-label="Custom"])').getAttribute('data-label');
+                const color = annotationColor.value;
+
+                // Calculate center position for the label
+                const centerX = polygonPoints.reduce((sum, p) => sum + p.x, 0) / polygonPoints.length;
+                const centerY = polygonPoints.reduce((sum, p) => sum + p.y, 0) / polygonPoints.length;
+
+                // Create annotation header with delete button
+                const header = document.createElement('div');
+                header.className = 'annotation-header';
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-annotation';
+                deleteBtn.innerHTML = '×';
+                deleteBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    deleteAnnotationFromCanvas(currentAnnotation);
+                });
+
+                header.appendChild(deleteBtn);
+                currentAnnotation.insertBefore(header, currentAnnotation.firstChild);
+
+                // Make annotation draggable
+                currentAnnotation.addEventListener('mousedown', startAnnotationDrag);
+                currentAnnotation.addEventListener('touchstart', startAnnotationDrag, { passive: false });
+
+                // Add label to the annotation (positioned near polygon)
+                const labelElement = document.createElement('div');
+                labelElement.className = 'annotation-label';
+                labelElement.textContent = label;
+                labelElement.style.left = `${centerX}px`;
+                labelElement.style.top = `${centerY}px`;
+                labelElement.style.color = color;
+                annotationCanvas.appendChild(labelElement);
+
+                // Update annotation style with selected color
+                currentAnnotation.style.backgroundColor = getColorWithAlpha(color, 0.2);
+                currentAnnotation.style.border = `2px solid ${color}`;
+
+                // Save reference to label element
+                currentAnnotation.labelElement = labelElement;
+
+                // Update all polygon elements with the selected color
+                polygonElements.forEach(el => {
+                    if (el.classList.contains('polygon-point')) {
+                        el.style.borderColor = color;
+                    } else if (el.classList.contains('polygon-line')) {
+                        el.style.background = color;
+                    }
+                });
+
+                // Save annotation data
+                const annotationData = {
+                    element: currentAnnotation,
+                    label: label,
+                    color: color,
+                    points: polygonPoints.map(p => ({
+                        x: (p.x / annotationCanvas.offsetWidth * 100).toFixed(2) + '%',
+                        y: (p.y / annotationCanvas.offsetHeight * 100).toFixed(2) + '%'
+                    }))
+                };
+
+                annotations.push(annotationData);
+
+                // Add to saved annotations list
+                const annotationItem = document.createElement('div');
+                annotationItem.className = 'annotation-item';
+
+                const deleteSavedBtn = document.createElement('button');
+                deleteSavedBtn.className = 'delete-saved-annotation';
+                deleteSavedBtn.innerHTML = '×';
+                deleteSavedBtn.addEventListener('click', function () {
+                    deleteSavedAnnotation(annotationData);
+                });
+
+                annotationItem.innerHTML = `
+                        <span><strong>${label}</strong> (${color})</span>
+                    `;
+                annotationItem.appendChild(deleteSavedBtn);
+                annotationsList.appendChild(annotationItem);
+
+                // Reset
+                annotationForm.style.display = 'none';
+                currentAnnotation = null;
+                polygonPoints = [];
+                firstPoint = null;
+                canStartNewPolygon = true;
+
+                // Show saved annotations section
+                savedAnnotations.style.display = 'block';
+            }
+
+            function deleteAnnotationFromCanvas(annotationElement) {
+
+                if (annotationElement.labelElement && annotationElement.labelElement.parentNode) {
+                    annotationElement.labelElement.parentNode.removeChild(annotationElement.labelElement);
+                }
+
+                // Remove from DOM
+                if (annotationElement.parentNode) {
+                    annotationElement.parentNode.removeChild(annotationElement);
+                }
+
+                // Remove from annotations array
+                const index = annotations.findIndex(anno => anno.element === annotationElement);
+                if (index !== -1) {
+                    annotations.splice(index, 1);
+                    updateSavedAnnotationsList();
+                }
+            }
+
+            function deleteSavedAnnotation(annotationData) {
+
+                if (annotationData.element.labelElement && annotationData.element.labelElement.parentNode) {
+                    annotationData.element.labelElement.parentNode.removeChild(annotationData.element.labelElement);
+                }
+
+                // Remove from DOM
+                if (annotationData.element.parentNode) {
+                    annotationData.element.parentNode.removeChild(annotationData.element);
+                }
+
+                // Remove from annotations array
+                const index = annotations.indexOf(annotationData);
+                if (index !== -1) {
+                    annotations.splice(index, 1);
+                    updateSavedAnnotationsList();
+                }
+            }
+
+            function updateSavedAnnotationsList() {
+                annotationsList.innerHTML = '';
+                annotations.forEach((anno) => {
+                    const annotationItem = document.createElement('div');
+                    annotationItem.className = 'annotation-item';
+
+                    const deleteSavedBtn = document.createElement('button');
+                    deleteSavedBtn.className = 'delete-saved-annotation';
+                    deleteSavedBtn.innerHTML = '×';
+                    deleteSavedBtn.addEventListener('click', function () {
+                        deleteSavedAnnotation(anno);
+                    });
+
+                    annotationItem.innerHTML = `
+                            <span><strong>${anno.label}</strong> (${anno.color})</span>
+                        `;
+                    annotationItem.appendChild(deleteSavedBtn);
+                    annotationsList.appendChild(annotationItem);
+                });
+
+                if (annotations.length === 0) {
+                    savedAnnotations.style.display = 'none';
+                }
+            }
+
+            // Helper function to get color with alpha
+            function getColorWithAlpha(color, alpha) {
+                // Convert named colors to rgba
+                const colors = {
+                    'red': '255, 0, 0',
+                    'blue': '0, 0, 255',
+                    'green': '0, 128, 0',
+                    'yellow': '255, 255, 0'
+                };
+                return `rgba(${colors[color] || '0, 0, 255'}, ${alpha})`;
+            }
+
+            function cancelAnnotation() {
+                if (currentAnnotation) {
+                    annotationCanvas.removeChild(currentAnnotation);
+                    currentAnnotation = null;
+                }
+                clearPolygonElements();
+                polygonPoints = [];
+                firstPoint = null;
+                isDrawingPolygon = false;
+                annotationForm.style.display = 'none';
+                canStartNewPolygon = true;
+            }
+
+            let lastTapTime = 0;
+            annotationCanvas.addEventListener('touchend', function (e) {
+                if (e.touches.length === 0) { // Only when all fingers are lifted
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTapTime;
+                    if (e.touches.length === 2 || (tapLength < 300 && tapLength > 0)) {
+                        cancelPolygon();
+                    }
+                    lastTapTime = currentTime;
+                }
+            });
+
+            function startAnnotationDrag(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                if (isDrawingPolygon) return;
+
+                isDraggingAnnotation = true;
+                currentDragAnnotation = this;
+
+                const rect = this.getBoundingClientRect();
+                if (e.type === 'mousedown') {
+                    dragOffsetX = e.clientX - rect.left;
+                    dragOffsetY = e.clientY - rect.top;
+                } else if (e.touches) {
+                    dragOffsetX = e.touches[0].clientX - rect.left;
+                    dragOffsetY = e.touches[0].clientY - rect.top;
+                }
+
+                document.addEventListener('mousemove', dragAnnotation);
+                document.addEventListener('touchmove', dragAnnotation, { passive: false });
+                document.addEventListener('mouseup', endAnnotationDrag);
+                document.addEventListener('touchend', endAnnotationDrag);
+            }
+
+            function dragAnnotation(e) {
+                if (!isDraggingAnnotation) return;
+                e.preventDefault();
+
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+
+                if (clientX && clientY) {
+                    const newX = clientX - dragOffsetX;
+                    const newY = clientY - dragOffsetY;
+
+                    // Update annotation position
+                    currentDragAnnotation.style.left = `${newX}px`;
+                    currentDragAnnotation.style.top = `${newY}px`;
+
+                    // Update label position if exists
+                    if (currentDragAnnotation.labelElement) {
+                        const labelRect = currentDragAnnotation.labelElement.getBoundingClientRect();
+                        const labelX = newX + (labelRect.left - currentDragAnnotation.getBoundingClientRect().left);
+                        const labelY = newY + (labelRect.top - currentDragAnnotation.getBoundingClientRect().top);
+                        currentDragAnnotation.labelElement.style.left = `${labelX}px`;
+                        currentDragAnnotation.labelElement.style.top = `${labelY}px`;
+                    }
+                }
+            }
+
+            function endAnnotationDrag() {
+                isDraggingAnnotation = false;
+                currentDragAnnotation = null;
+
+                document.removeEventListener('mousemove', dragAnnotation);
+                document.removeEventListener('touchmove', dragAnnotation);
+                document.removeEventListener('mouseup', endAnnotationDrag);
+                document.removeEventListener('touchend', endAnnotationDrag);
+            }
+        });
+    </script>
+</body>
+</html>
